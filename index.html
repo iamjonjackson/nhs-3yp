@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NHS Benefits Realisation Tracker</title>
+  <style>
+    /* ===== CSS Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --nhs-blue:       #005EB8;
+      --nhs-dark-blue:  #003087;
+      --nhs-light-blue: #41B6E6;
+      --nhs-green:      #009639;
+      --nhs-warm-yellow:#FFB81C;
+      --nhs-red:        #DA291C;
+      --nhs-white:      #FFFFFF;
+      --nhs-grey:       #425563;
+      --nhs-pale-grey:  #F0F4F5;
+      --nhs-mid-grey:   #768692;
+      --nhs-border:     #D8DDE0;
+      --focus-ring:     3px solid #FFB81C;
+
+      /* Phase colours — each has a light tint + dark text for contrast */
+      --phase-0-bg:  #E8F1FA; /* Initiation */
+      --phase-1-bg:  #E5F4FF; /* Requirements */
+      --phase-2-bg:  #E8FAF0; /* Design */
+      --phase-3-bg:  #FFF8E1; /* Delivery */
+      --phase-4-bg:  #F3E8FF; /* Post-Implementation */
+
+      --phase-0-accent: #005EB8;
+      --phase-1-accent: #0072CE;
+      --phase-2-accent: #007F3B;
+      --phase-3-accent: #D5820D;
+      --phase-4-accent: #7A2D8C;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: "Frutiger W01", Arial, sans-serif;
+      background: var(--nhs-pale-grey);
+      color: #212B32;
+      min-height: 100vh;
+    }
+
+    /* ===== Skip Link ===== */
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: var(--nhs-warm-yellow);
+      color: #212B32;
+      padding: 8px 12px;
+      font-weight: 700;
+      z-index: 100;
+      transition: top 0.2s;
+    }
+    .skip-link:focus { top: 0; }
+
+    /* ===== Header ===== */
+    .nhs-header {
+      background: var(--nhs-blue);
+      color: var(--nhs-white);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 64px;
+    }
+    .nhs-logo {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      background: var(--nhs-white);
+      color: var(--nhs-blue);
+      padding: 2px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .nhs-header-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .nhs-header-subtitle {
+      font-size: 0.875rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    /* ===== Layout ===== */
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ===== Upload Section ===== */
+    .upload-section {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .section-heading {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--nhs-dark-blue);
+      margin-bottom: 8px;
+    }
+    .section-hint {
+      font-size: 0.875rem;
+      color: var(--nhs-grey);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .upload-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--nhs-blue);
+      color: var(--nhs-white);
+      padding: 10px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      transition: background 0.15s;
+      border: 2px solid transparent;
+    }
+    .file-label:hover { background: var(--nhs-dark-blue); }
+    .file-label:focus-within { outline: var(--focus-ring); outline-offset: 2px; }
+    #csv-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+    .file-name-display {
+      font-size: 0.875rem;
+      color: var(--nhs-grey);
+      font-style: italic;
+    }
+    .clear-btn {
+      background: none;
+      border: 2px solid var(--nhs-mid-grey);
+      color: var(--nhs-grey);
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .clear-btn:hover { border-color: var(--nhs-red); color: var(--nhs-red); }
+    .clear-btn:focus { outline: var(--focus-ring); outline-offset: 2px; }
+
+    /* Error / info banner */
+    .banner {
+      display: none;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .banner.error  { background: #FDECEA; border-left: 4px solid var(--nhs-red);  color: #7A1010; display: block; }
+    .banner.info   { background: #E8F4FE; border-left: 4px solid var(--nhs-blue); color: #003087; display: block; }
+    .banner.success{ background: #E6F4EC; border-left: 4px solid var(--nhs-green);color: #004F1E; display: block; }
+
+    /* ===== Phase Slider Section ===== */
+    .phase-section {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .phase-label-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 16px;
+      margin-bottom: 4px;
+    }
+    .phase-tick {
+      font-size: 0.75rem;
+      color: var(--nhs-grey);
+      text-align: center;
+      flex: 1;
+      line-height: 1.3;
+    }
+    .phase-tick.active {
+      font-weight: 700;
+      color: var(--nhs-dark-blue);
+    }
+    .slider-wrap { position: relative; padding: 8px 0; }
+    #phase-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--nhs-border);
+      outline: none;
+      cursor: pointer;
+    }
+    #phase-slider:focus { outline: var(--focus-ring); outline-offset: 4px; }
+    #phase-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--nhs-blue);
+      border: 3px solid var(--nhs-white);
+      box-shadow: 0 0 0 2px var(--nhs-blue);
+      cursor: pointer;
+    }
+    #phase-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--nhs-blue);
+      border: 3px solid var(--nhs-white);
+      box-shadow: 0 0 0 2px var(--nhs-blue);
+      cursor: pointer;
+    }
+    .current-phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      margin-top: 16px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .phase-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* ===== Summary Cards ===== */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .summary-card-value {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--nhs-dark-blue);
+      line-height: 1.2;
+    }
+    .summary-card-label {
+      font-size: 0.8125rem;
+      color: var(--nhs-grey);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .summary-card.highlight {
+      background: var(--nhs-dark-blue);
+      border-color: var(--nhs-dark-blue);
+    }
+    .summary-card.highlight .summary-card-value { color: var(--nhs-white); }
+    .summary-card.highlight .summary-card-label { color: #C0CFDF; }
+
+    /* ===== Benefits Timeline Bar ===== */
+    .timeline-section {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .phase-progress-track {
+      display: flex;
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 16px 0 8px;
+    }
+    .phase-progress-segment {
+      flex: 1;
+      transition: opacity 0.3s;
+    }
+    .phase-progress-segment.inactive { opacity: 0.2; }
+    .phase-labels-track {
+      display: flex;
+      font-size: 0.75rem;
+      color: var(--nhs-grey);
+    }
+    .phase-labels-track span { flex: 1; text-align: center; }
+
+    /* ===== Benefits Table / Cards ===== */
+    .benefits-section {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .benefits-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .toggle-btn {
+      padding: 7px 14px;
+      border-radius: 4px;
+      border: 2px solid var(--nhs-blue);
+      background: none;
+      color: var(--nhs-blue);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toggle-btn.active,
+    .toggle-btn:hover { background: var(--nhs-blue); color: var(--nhs-white); }
+    .toggle-btn:focus { outline: var(--focus-ring); outline-offset: 2px; }
+
+    .filter-label { font-size: 0.875rem; color: var(--nhs-grey); font-weight: 600; }
+
+    /* Card grid */
+    .benefit-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .benefit-card {
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 16px;
+      background: var(--nhs-white);
+      position: relative;
+      transition: box-shadow 0.15s;
+    }
+    .benefit-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .benefit-card-phase-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .benefit-card-task {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #212B32;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .benefit-card-date {
+      font-size: 0.8125rem;
+      color: var(--nhs-mid-grey);
+      margin-bottom: 8px;
+    }
+    .benefit-card-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--nhs-green);
+    }
+    .benefit-card-value.negative { color: var(--nhs-red); }
+
+    /* Table view */
+    .benefits-table-wrap { overflow-x: auto; }
+    table.benefits-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .benefits-table th {
+      background: var(--nhs-dark-blue);
+      color: var(--nhs-white);
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .benefits-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--nhs-border);
+      vertical-align: middle;
+    }
+    .benefits-table tr:hover td { background: var(--nhs-pale-grey); }
+    .benefits-table tr:last-child td { border-bottom: none; }
+    .phase-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .value-positive { color: var(--nhs-green); font-weight: 700; }
+    .value-negative { color: var(--nhs-red);   font-weight: 700; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--nhs-mid-grey);
+    }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 8px; color: var(--nhs-grey); }
+    .empty-state-text  { font-size: 0.875rem; line-height: 1.6; }
+
+    /* ===== Cumulative Chart ===== */
+    .chart-section {
+      background: var(--nhs-white);
+      border: 2px solid var(--nhs-border);
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .chart-container {
+      width: 100%;
+      height: 200px;
+      margin-top: 16px;
+      position: relative;
+    }
+    canvas#benefit-chart {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--nhs-mid-grey);
+      padding: 24px 16px;
+      border-top: 2px solid var(--nhs-border);
+    }
+
+    /* ===== Utilities ===== */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- ===== HEADER ===== -->
+<header class="nhs-header" role="banner">
+  <span class="nhs-logo" aria-label="NHS">NHS</span>
+  <div>
+    <div class="nhs-header-title">Benefits Realisation Tracker</div>
+    <div class="nhs-header-subtitle">NHS Digital Transformation Programme — Phase Visualisation Tool</div>
+  </div>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main id="main-content" class="container">
+
+  <!-- ===== 1. CSV UPLOAD ===== -->
+  <section class="upload-section" aria-labelledby="upload-heading">
+    <h1 class="section-heading" id="upload-heading">Upload Programme Data</h1>
+    <p class="section-hint">
+      Upload a CSV file exported from your programme management tool.
+      Required columns: <strong>Date</strong> (DD/MM/YY to DD/MM/YY),
+      <strong>Task</strong>, <strong>Phase</strong>
+      (Initiation / Requirements / Design / Delivery / Post-Implementation),
+      <strong>Monetary Value impact</strong> (e.g. £12.5 Million saved).
+    </p>
+    <div class="upload-row">
+      <label class="file-label" for="csv-file-input" aria-label="Choose CSV file">
+        <span aria-hidden="true">📂</span> Choose CSV file
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" />
+      </label>
+      <span class="file-name-display" id="file-name-display" aria-live="polite">No file selected</span>
+      <button type="button" class="clear-btn hidden" id="clear-btn" aria-label="Clear uploaded data">Clear data</button>
+    </div>
+    <div id="upload-banner" class="banner" role="alert" aria-live="assertive"></div>
+  </section>
+
+  <!-- ===== 2. PHASE SLIDER ===== -->
+  <section class="phase-section" aria-labelledby="phase-heading">
+    <h2 class="section-heading" id="phase-heading">Programme Phase Navigation</h2>
+    <p class="section-hint">
+      Drag the slider to explore each programme phase and see which benefits are unlocked.
+    </p>
+
+    <div class="slider-wrap">
+      <label for="phase-slider" class="sr-only">Select programme phase (1 to 5)</label>
+      <input
+        type="range"
+        id="phase-slider"
+        min="0"
+        max="4"
+        value="0"
+        step="1"
+        aria-valuemin="0"
+        aria-valuemax="4"
+        aria-valuenow="0"
+        aria-valuetext="Initiation (Phase 1 of 5)"
+      />
+    </div>
+
+    <div class="phase-label-row" aria-hidden="true" id="phase-tick-row">
+      <span class="phase-tick" id="tick-0">Initiation<br/><small>Phase 1</small></span>
+      <span class="phase-tick" id="tick-1">Requirements<br/><small>Phase 2</small></span>
+      <span class="phase-tick" id="tick-2">Design<br/><small>Phase 3</small></span>
+      <span class="phase-tick" id="tick-3">Delivery<br/><small>Phase 4</small></span>
+      <span class="phase-tick" id="tick-4">Post-Impl.<br/><small>Phase 5</small></span>
+    </div>
+
+    <div>
+      <span class="current-phase-badge" id="current-phase-badge" aria-live="polite">
+        <span class="phase-dot" id="current-phase-dot"></span>
+        <span id="current-phase-text">Phase 1 — Initiation</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ===== 3. SUMMARY CARDS ===== -->
+  <div class="summary-grid" id="summary-grid" aria-label="Programme summary statistics">
+    <div class="summary-card highlight" aria-label="Total benefits unlocked to this phase">
+      <div class="summary-card-value" id="stat-total-value">—</div>
+      <div class="summary-card-label">Cumulative Benefit (£M) — up to current phase</div>
+    </div>
+    <div class="summary-card" aria-label="Number of tasks visible in current view">
+      <div class="summary-card-value" id="stat-tasks-count">—</div>
+      <div class="summary-card-label">Tasks in view</div>
+    </div>
+    <div class="summary-card" aria-label="Number of phases shown">
+      <div class="summary-card-value" id="stat-phases-shown">—</div>
+      <div class="summary-card-label">Phases shown</div>
+    </div>
+    <div class="summary-card" aria-label="Total programme benefit">
+      <div class="summary-card-value" id="stat-total-programme">—</div>
+      <div class="summary-card-label">Full Programme Benefit (£M)</div>
+    </div>
+  </div>
+
+  <!-- ===== 4. PROGRESS BAR ===== -->
+  <section class="timeline-section" aria-labelledby="timeline-heading">
+    <h2 class="section-heading" id="timeline-heading">Phase Progress</h2>
+    <p class="section-hint">Shows benefit distribution across all programme phases.</p>
+    <div class="phase-progress-track" id="phase-progress-track" role="img" aria-label="Phase progress bar">
+      <div class="phase-progress-segment" id="seg-0" style="background:#005EB8"></div>
+      <div class="phase-progress-segment" id="seg-1" style="background:#0072CE"></div>
+      <div class="phase-progress-segment" id="seg-2" style="background:#009639"></div>
+      <div class="phase-progress-segment" id="seg-3" style="background:#D5820D"></div>
+      <div class="phase-progress-segment" id="seg-4" style="background:#7A2D8C"></div>
+    </div>
+    <div class="phase-labels-track" aria-hidden="true">
+      <span>Initiation</span>
+      <span>Requirements</span>
+      <span>Design</span>
+      <span>Delivery</span>
+      <span>Post-Impl.</span>
+    </div>
+  </section>
+
+  <!-- ===== 5. CUMULATIVE CHART ===== -->
+  <section class="chart-section" aria-labelledby="chart-heading">
+    <h2 class="section-heading" id="chart-heading">Cumulative Benefit Realisation</h2>
+    <p class="section-hint">
+      Cumulative monetary benefit (£M) unlocked by phase, up to the currently selected phase.
+    </p>
+    <div class="chart-container" role="img" aria-label="Cumulative benefit chart" aria-describedby="chart-desc">
+      <canvas id="benefit-chart"></canvas>
+    </div>
+    <p id="chart-desc" class="sr-only">Bar chart showing cumulative monetary benefit by phase up to the selected phase.</p>
+  </section>
+
+  <!-- ===== 6. BENEFITS TABLE / CARDS ===== -->
+  <section class="benefits-section" aria-labelledby="benefits-heading">
+    <h2 class="section-heading" id="benefits-heading">Benefits Detail</h2>
+    <div class="benefits-controls">
+      <span class="filter-label" id="view-label">View:</span>
+      <button type="button" class="toggle-btn active" id="btn-cards"
+              aria-pressed="true" aria-controls="benefit-cards-view" aria-describedby="view-label">
+        Cards
+      </button>
+      <button type="button" class="toggle-btn" id="btn-table"
+              aria-pressed="false" aria-controls="benefit-table-view" aria-describedby="view-label">
+        Table
+      </button>
+      <button type="button" class="toggle-btn" id="btn-all-phases"
+              aria-pressed="false">
+        Show all phases
+      </button>
+    </div>
+
+    <!-- Cards view -->
+    <div id="benefit-cards-view" role="region" aria-label="Benefit cards">
+      <div class="benefit-cards" id="benefit-cards-container"></div>
+    </div>
+
+    <!-- Table view -->
+    <div id="benefit-table-view" class="benefits-table-wrap hidden" role="region" aria-label="Benefits table">
+      <table class="benefits-table" aria-label="Programme benefits by phase">
+        <thead>
+          <tr>
+            <th scope="col">Phase</th>
+            <th scope="col">Task / Benefit</th>
+            <th scope="col">Date Range</th>
+            <th scope="col">Monetary Value</th>
+          </tr>
+        </thead>
+        <tbody id="benefit-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Empty state (shown before CSV upload) -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-state-icon" aria-hidden="true">📊</div>
+      <div class="empty-state-title">No programme data loaded</div>
+      <p class="empty-state-text">
+        Upload a CSV file above to begin visualising your NHS digital transformation benefits.
+        <br/>Once loaded, use the phase slider to explore benefit realisation across all stages.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>NHS Benefits Realisation Tracker &mdash; Client-side only &mdash; No data leaves your browser</p>
+</footer>
+
+<script>
+/* ================================================================
+   NHS Benefits Realisation Tracker — Main Application Script
+   Tech: Vanilla JS (ES6+) | IndexedDB persistence | No frameworks
+   ================================================================ */
+
+'use strict';
+
+/* ── Phase Configuration ─────────────────────────────── */
+const PHASES = [
+  { name: 'Initiation',            short: 'Initiation',  colour: '#005EB8', bg: '#E8F1FA', text: '#00346A' },
+  { name: 'Requirements',          short: 'Requirements',colour: '#0072CE', bg: '#E5F4FF', text: '#00418A' },
+  { name: 'Design',                short: 'Design',      colour: '#009639', bg: '#E8FAF0', text: '#005522' },
+  { name: 'Delivery',              short: 'Delivery',    colour: '#D5820D', bg: '#FFF8E1', text: '#7A4500' },
+  { name: 'Post-Implementation',   short: 'Post-Impl.',  colour: '#7A2D8C', bg: '#F3E8FF', text: '#44136B' },
+];
+
+/* Alternative spellings / shorthands accepted in CSV */
+const PHASE_ALIASES = {
+  'initiation':         0,
+  'init':               0,
+  'requirements':       1,
+  'req':                1,
+  'reqs':               1,
+  'requirement':        1,
+  'design':             2,
+  'delivery':           3,
+  'post-implementation':4,
+  'post implementation':4,
+  'post-impl':          4,
+  'post impl':          4,
+  'post':               4,
+};
+
+/* ── State ───────────────────────────────────────────── */
+let rows        = [];     // parsed CSV rows
+let currentPhase = 0;     // 0–4
+let showAllPhases = false;
+
+/* ── DOM refs ────────────────────────────────────────── */
+const fileInput          = document.getElementById('csv-file-input');
+const fileNameDisplay    = document.getElementById('file-name-display');
+const clearBtn           = document.getElementById('clear-btn');
+const uploadBanner       = document.getElementById('upload-banner');
+
+const phaseSlider        = document.getElementById('phase-slider');
+const phaseBadge         = document.getElementById('current-phase-badge');
+const phaseDot           = document.getElementById('current-phase-dot');
+const phaseText          = document.getElementById('current-phase-text');
+const tickEls            = PHASES.map((_, i) => document.getElementById('tick-' + i));
+
+const statTotal          = document.getElementById('stat-total-value');
+const statCount          = document.getElementById('stat-tasks-count');
+const statPhases         = document.getElementById('stat-phases-shown');
+const statProgramme      = document.getElementById('stat-total-programme');
+
+const emptyState         = document.getElementById('empty-state');
+const cardsView          = document.getElementById('benefit-cards-view');
+const tableView          = document.getElementById('benefit-table-view');
+const cardsContainer     = document.getElementById('benefit-cards-container');
+const tableBody          = document.getElementById('benefit-table-body');
+const btnCards           = document.getElementById('btn-cards');
+const btnTable           = document.getElementById('btn-table');
+const btnAllPhases       = document.getElementById('btn-all-phases');
+
+/* ── IndexedDB setup ─────────────────────────────────── */
+const DB_NAME    = 'nhs-benefits-tracker';
+const DB_VERSION = 1;
+const STORE_NAME = 'programme-data';
+
+let db = null;
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const idb = e.target.result;
+      if (!idb.objectStoreNames.contains(STORE_NAME)) {
+        idb.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbSave(data) {
+  if (!db) return;
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  store.put({ id: 'rows', payload: data });
+}
+
+function dbLoad() {
+  return new Promise((resolve) => {
+    if (!db) { resolve(null); return; }
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get('rows');
+    req.onsuccess = e => resolve(e.target.result ? e.target.result.payload : null);
+    req.onerror   = () => resolve(null);
+  });
+}
+
+function dbClear() {
+  if (!db) return;
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  tx.objectStore(STORE_NAME).clear();
+}
+
+/* ── CSV Parsing ─────────────────────────────────────── */
+/**
+ * Very small CSV parser handling quoted fields, CRLF/LF.
+ * Returns array-of-arrays of raw strings.
+ */
+function parseCSV(text) {
+  const output = [];
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (normalized[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(field.trim()); field = ''; }
+      else if (ch === '\n') {
+        row.push(field.trim());
+        if (row.some(c => c !== '')) output.push(row);
+        row = []; field = '';
+      } else { field += ch; }
+    }
+  }
+  row.push(field.trim());
+  if (row.some(c => c !== '')) output.push(row);
+
+  return output;
+}
+
+/** Find column indices by fuzzy header matching */
+function findColumnIndex(headers, candidates) {
+  const lower = headers.map(h => h.toLowerCase().trim());
+  for (const candidate of candidates) {
+    const idx = lower.findIndex(h => h.includes(candidate));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+/** Parse monetary string like "£12.5 Million saved" → number 12.5 */
+function parseMonetaryValue(raw) {
+  if (!raw) return 0;
+  const clean = raw.replace(/[£$,]/g, '').toLowerCase();
+  const match = clean.match(/-?\d+(\.\d+)?/);
+  if (!match) return 0;
+  let val = parseFloat(match[0]);
+  if (clean.includes('billion')) val *= 1000;
+  return val;
+}
+
+/** Resolve phase name to 0-based index, or -1 if unknown */
+function resolvePhase(raw) {
+  if (!raw) return -1;
+  const key = raw.toLowerCase().trim();
+  for (const alias of Object.keys(PHASE_ALIASES)) {
+    if (key === alias || key.startsWith(alias)) return PHASE_ALIASES[alias];
+  }
+  return -1;
+}
+
+/** Parse CSV text into row objects */
+function processCsvText(text) {
+  const grid = parseCSV(text);
+  if (grid.length < 2) return { error: 'CSV appears to be empty or has only a header row.' };
+
+  const headers = grid[0];
+  const dateIdx    = findColumnIndex(headers, ['date']);
+  const taskIdx    = findColumnIndex(headers, ['task', 'activity', 'benefit', 'description']);
+  const phaseIdx   = findColumnIndex(headers, ['phase']);
+  const valueIdx   = findColumnIndex(headers, ['monetary', 'value', 'financial', 'cost', 'saving', 'benefit value']);
+
+  const missing = [];
+  if (dateIdx  === -1) missing.push('Date');
+  if (taskIdx  === -1) missing.push('Task');
+  if (phaseIdx === -1) missing.push('Phase');
+  if (valueIdx === -1) missing.push('Monetary Value impact');
+
+  if (missing.length) {
+    return { error: 'Could not find required columns: ' + missing.join(', ') + '. Please check your CSV headers.' };
+  }
+
+  const parsed = [];
+  let skipped = 0;
+
+  for (let i = 1; i < grid.length; i++) {
+    const rowArr = grid[i];
+    const rawPhase = rowArr[phaseIdx] || '';
+    const resolvedPhaseIndex = resolvePhase(rawPhase);
+
+    if (resolvedPhaseIndex === -1) {
+      skipped++;
+      continue;
+    }
+
+    parsed.push({
+      date:    rowArr[dateIdx]  || '',
+      task:    rowArr[taskIdx]  || '(No task description)',
+      phase:   resolvedPhaseIndex,
+      rawPhase: rawPhase,
+      rawValue: rowArr[valueIdx] || '',
+      value:   parseMonetaryValue(rowArr[valueIdx] || ''),
+    });
+  }
+
+  if (parsed.length === 0) {
+    return { error: 'No valid data rows found. Ensure the Phase column uses recognised values (Initiation, Requirements, Design, Delivery, Post-Implementation).' };
+  }
+
+  return { rows: parsed, skipped };
+}
+
+/* ── Rendering ───────────────────────────────────────── */
+
+function getVisibleRows() {
+  if (showAllPhases) return rows;
+  return rows.filter(r => r.phase <= currentPhase);
+}
+
+function updateSliderFill() {
+  const pct = (currentPhase / 4) * 100;
+  const phase = PHASES[currentPhase];
+  phaseSlider.style.background =
+    `linear-gradient(to right, ${phase.colour} 0%, ${phase.colour} ${pct}%, #D8DDE0 ${pct}%, #D8DDE0 100%)`;
+}
+
+function updatePhaseBadge() {
+  const phase = PHASES[currentPhase];
+  phaseBadge.style.background = phase.bg;
+  phaseBadge.style.color      = phase.text;
+  phaseDot.style.background   = phase.colour;
+  phaseText.textContent        = `Phase ${currentPhase + 1} — ${phase.name}`;
+
+  phaseSlider.setAttribute('aria-valuenow', String(currentPhase));
+  phaseSlider.setAttribute('aria-valuetext', `${phase.name} (Phase ${currentPhase + 1} of 5)`);
+}
+
+function updatePhaseTicks() {
+  tickEls.forEach((el, i) => {
+    el.classList.toggle('active', i === currentPhase);
+  });
+}
+
+function updateProgressBar() {
+  for (let i = 0; i < 5; i++) {
+    const seg = document.getElementById('seg-' + i);
+    const active = showAllPhases ? true : i <= currentPhase;
+    seg.classList.toggle('inactive', !active);
+  }
+}
+
+function updateSummaryCards() {
+  if (!rows.length) {
+    [statTotal, statCount, statPhases, statProgramme].forEach(el => { el.textContent = '—'; });
+    return;
+  }
+
+  const visible  = getVisibleRows();
+  const totalVal = visible.reduce((s, r) => s + r.value, 0);
+  const allVal   = rows.reduce((s, r) => s + r.value, 0);
+  const uniquePhasesVisible = new Set(visible.map(r => r.phase)).size;
+
+  statTotal.textContent     = formatMillions(totalVal);
+  statCount.textContent     = String(visible.length);
+  statPhases.textContent    = String(uniquePhasesVisible);
+  statProgramme.textContent = formatMillions(allVal);
+}
+
+function formatMillions(val) {
+  if (val === 0) return '£0M';
+  const sign = val < 0 ? '-' : '';
+  return sign + '£' + Math.abs(val).toFixed(1) + 'M';
+}
+
+function buildPhaseTag(phaseIdx) {
+  const phase = PHASES[phaseIdx];
+  return `<span class="phase-tag" style="background:${phase.bg};color:${phase.text};" aria-label="Phase: ${phase.name}">${phase.short}</span>`;
+}
+
+function renderCards(visible) {
+  if (!visible.length) {
+    cardsContainer.innerHTML = '';
+    return;
+  }
+  cardsContainer.innerHTML = visible.map(r => {
+    const phase = PHASES[r.phase];
+    const valueClass = r.value >= 0 ? 'benefit-card-value' : 'benefit-card-value negative';
+    const formattedVal = r.rawValue || formatMillions(r.value);
+    return `
+      <article class="benefit-card" aria-label="Benefit: ${escHtml(r.task)}">
+        <div class="benefit-card-phase-tag"
+             style="background:${phase.bg};color:${phase.text};"
+             aria-label="Phase: ${phase.name}">
+          ${escHtml(phase.name)}
+        </div>
+        <div class="benefit-card-task">${escHtml(r.task)}</div>
+        <div class="benefit-card-date" aria-label="Date range: ${escHtml(r.date)}">${escHtml(r.date)}</div>
+        <div class="${valueClass}" aria-label="Monetary value: ${escHtml(formattedVal)}">${escHtml(formattedVal)}</div>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderTable(visible) {
+  if (!visible.length) {
+    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#768692;padding:24px;">No items to display for the selected phase(s).</td></tr>';
+    return;
+  }
+  tableBody.innerHTML = visible.map(r => {
+    const valueClass = r.value >= 0 ? 'value-positive' : 'value-negative';
+    const formattedVal = r.rawValue || formatMillions(r.value);
+    return `
+      <tr>
+        <td>${buildPhaseTag(r.phase)}</td>
+        <td>${escHtml(r.task)}</td>
+        <td>${escHtml(r.date)}</td>
+        <td class="${valueClass}">${escHtml(formattedVal)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderChart() {
+  const canvas = document.getElementById('benefit-chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  const container = canvas.parentElement;
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // Compute per-phase totals (only up to currentPhase unless showAllPhases)
+  const maxPhase = showAllPhases ? 4 : currentPhase;
+  const phaseTotals = PHASES.map((_, i) => {
+    if (i > maxPhase) return null;
+    return rows.filter(r => r.phase === i).reduce((s, r) => s + r.value, 0);
+  });
+
+  // Cumulative
+  const cumulative = [];
+  let running = 0;
+  for (let i = 0; i <= 4; i++) {
+    if (phaseTotals[i] === null) { cumulative.push(null); continue; }
+    running += phaseTotals[i];
+    cumulative.push(running);
+  }
+
+  const visibleVals = cumulative.filter(v => v !== null);
+  if (!visibleVals.length) {
+    ctx.fillStyle = '#768692';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload data to see chart', W / 2, H / 2);
+    return;
+  }
+
+  const padding = { top: 20, right: 20, bottom: 50, left: 60 };
+  const chartW = W - padding.left - padding.right;
+  const chartH = H - padding.top - padding.bottom;
+
+  const allVals = cumulative.filter(v => v !== null);
+  const minVal  = Math.min(0, ...allVals);
+  const maxVal  = Math.max(0, ...allVals) || 1;
+  const valueRange = maxVal - minVal || 1;
+
+  const barCount = cumulative.filter(v => v !== null).length;
+  const barGap  = 8;
+  const barW    = (chartW - barGap * (barCount - 1)) / barCount;
+
+  // Axes
+  ctx.strokeStyle = '#D8DDE0';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, padding.top + chartH);
+  ctx.lineTo(padding.left + chartW, padding.top + chartH);
+  ctx.stroke();
+
+  // Zero line
+  const zeroY = padding.top + chartH - ((0 - minVal) / valueRange) * chartH;
+  ctx.strokeStyle = '#A0ADB4';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padding.left, zeroY);
+  ctx.lineTo(padding.left + chartW, zeroY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Bars
+  let barIdx = 0;
+  for (let i = 0; i <= 4; i++) {
+    if (cumulative[i] === null) continue;
+    const val  = cumulative[i];
+    const barX = padding.left + barIdx * (barW + barGap);
+    const barH = Math.abs(val / valueRange) * chartH;
+    const barY = val >= 0
+      ? padding.top + chartH - ((val - minVal) / valueRange) * chartH
+      : zeroY;
+
+    ctx.fillStyle = PHASES[i].colour;
+    ctx.fillRect(barX, val >= 0 ? barY : zeroY, barW, val >= 0 ? (zeroY - barY) : Math.abs(barH));
+
+    // Value label above bar
+    ctx.fillStyle = '#212B32';
+    ctx.font = `bold ${Math.max(9, Math.min(13, barW / 4))}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    const labelY = val >= 0 ? barY - 4 : zeroY + barH + 12;
+    ctx.fillText(formatMillions(val), barX + barW / 2, labelY);
+
+    // Phase label below
+    ctx.fillStyle = '#425563';
+    ctx.font = `${Math.max(9, Math.min(11, barW / 5))}px Arial, sans-serif`;
+    ctx.fillText(PHASES[i].short, barX + barW / 2, padding.top + chartH + 16);
+
+    barIdx++;
+  }
+
+  // Y axis labels
+  ctx.fillStyle = '#425563';
+  ctx.font = '10px Arial, sans-serif';
+  ctx.textAlign = 'right';
+  const ySteps = 4;
+  for (let s = 0; s <= ySteps; s++) {
+    const v = minVal + (valueRange / ySteps) * s;
+    const y = padding.top + chartH - ((v - minVal) / valueRange) * chartH;
+    ctx.fillText(formatMillions(v), padding.left - 6, y + 3);
+  }
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderAll() {
+  const visible = getVisibleRows();
+
+  updatePhaseBadge();
+  updatePhaseTicks();
+  updateSliderFill();
+  updateProgressBar();
+  updateSummaryCards();
+  renderCards(visible);
+  renderTable(visible);
+  renderChart();
+
+  const hasData = rows.length > 0;
+  emptyState.classList.toggle('hidden', hasData);
+  cardsContainer.classList.toggle('hidden', !hasData);
+  if (!hasData) {
+    tableBody.innerHTML = '';
+  }
+}
+
+/* ── Show banner ─────────────────────────────────────── */
+function showBanner(type, message) {
+  uploadBanner.className = 'banner ' + type;
+  uploadBanner.textContent = message;
+}
+function clearBanner() {
+  uploadBanner.className = 'banner';
+  uploadBanner.textContent = '';
+}
+
+/* ── Load data ───────────────────────────────────────── */
+function loadRows(newRows, filename) {
+  rows = newRows;
+  dbSave(rows);
+  clearBanner();
+  showBanner('success', `✔ Loaded ${rows.length} benefit row(s) from "${filename}".`);
+  fileNameDisplay.textContent = filename;
+  clearBtn.classList.remove('hidden');
+  renderAll();
+}
+
+/* ── Event Handlers ──────────────────────────────────── */
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const result = processCsvText(evt.target.result);
+    if (result.error) {
+      showBanner('error', '✖ ' + result.error);
+      return;
+    }
+    let msg = `✔ Loaded ${result.rows.length} benefit row(s) from "${file.name}".`;
+    if (result.skipped > 0) msg += ` (${result.skipped} row(s) skipped — unrecognised phase.)`;
+    loadRows(result.rows, file.name);
+    if (result.skipped > 0) showBanner('info', msg);
+  };
+  reader.onerror = () => showBanner('error', '✖ Could not read the file. Please try again.');
+  reader.readAsText(file);
+});
+
+clearBtn.addEventListener('click', () => {
+  rows = [];
+  dbClear();
+  fileInput.value = '';
+  fileNameDisplay.textContent = 'No file selected';
+  clearBtn.classList.add('hidden');
+  clearBanner();
+  renderAll();
+});
+
+phaseSlider.addEventListener('input', e => {
+  currentPhase = parseInt(e.target.value, 10);
+  renderAll();
+});
+
+phaseSlider.addEventListener('keydown', e => {
+  let changed = false;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+    if (currentPhase > 0) { currentPhase--; changed = true; }
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+    if (currentPhase < 4) { currentPhase++; changed = true; }
+  } else if (e.key === 'Home') {
+    currentPhase = 0; changed = true;
+  } else if (e.key === 'End') {
+    currentPhase = 4; changed = true;
+  }
+  if (changed) {
+    e.preventDefault();
+    phaseSlider.value = String(currentPhase);
+    renderAll();
+  }
+});
+
+btnCards.addEventListener('click', () => {
+  btnCards.classList.add('active');   btnCards.setAttribute('aria-pressed', 'true');
+  btnTable.classList.remove('active');btnTable.setAttribute('aria-pressed', 'false');
+  cardsView.classList.remove('hidden');
+  tableView.classList.add('hidden');
+});
+
+btnTable.addEventListener('click', () => {
+  btnTable.classList.add('active');   btnTable.setAttribute('aria-pressed', 'true');
+  btnCards.classList.remove('active');btnCards.setAttribute('aria-pressed', 'false');
+  tableView.classList.remove('hidden');
+  cardsView.classList.add('hidden');
+});
+
+btnAllPhases.addEventListener('click', () => {
+  showAllPhases = !showAllPhases;
+  btnAllPhases.classList.toggle('active', showAllPhases);
+  btnAllPhases.setAttribute('aria-pressed', String(showAllPhases));
+  btnAllPhases.textContent = showAllPhases ? 'Filter by phase' : 'Show all phases';
+  renderAll();
+});
+
+window.addEventListener('resize', () => { renderChart(); });
+
+/* ── Bootstrap ───────────────────────────────────────── */
+async function init() {
+  try {
+    await openDatabase();
+    const saved = await dbLoad();
+    if (saved && saved.length) {
+      rows = saved;
+      fileNameDisplay.textContent = '(restored from last session)';
+      clearBtn.classList.remove('hidden');
+      showBanner('info', `ℹ Restored ${rows.length} benefit row(s) from your previous session.`);
+    }
+  } catch (err) {
+    /* IndexedDB unavailable — proceed without persistence */
+    console.warn('IndexedDB unavailable:', err);
+  }
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
